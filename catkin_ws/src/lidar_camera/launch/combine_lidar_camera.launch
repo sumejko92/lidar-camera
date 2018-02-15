@@ -1,0 +1,11 @@
+<launch>
+
+	<node pkg="rosbag" type="play" name="rosbag" required="true" args="-l $(find lidar_camera)/bag_files/bag1.bag"/>
+
+    <node pkg="lidar_camera" type="pointcloud_to_image" name="pointcloud_to_image" output="screen">
+    </node>
+
+    <node name="image_view" pkg="image_view" type="image_view" args="image:=/output_image" output="screen">
+ 	</node>
+
+</launch>
