@@ -114,8 +114,8 @@ include_directories(${OpenCV_INCLUDE_DIRS})
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES lidar_camera
+  INCLUDE_DIRS include
+  LIBRARIES pointcloud_to_image_lib
 #  CATKIN_DEPENDS pcl_conversions pcl_ros roscpp sensor_msgs std_msgs
 #  DEPENDS system_lib
 )
@@ -127,7 +127,7 @@ catkin_package(
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-# include
+  include
   ${catkin_INCLUDE_DIRS}
 )
 
@@ -135,6 +135,12 @@ include_directories(
 # add_library(${PROJECT_NAME}
 #   src/${PROJECT_NAME}/lidar_camera.cpp
 # )
+
+add_library(pointcloud_to_image_lib src/pointcloud_to_image.cpp)
+target_link_libraries(pointcloud_to_image_lib ${catkin_LIBRARIES})
+add_dependencies(pointcloud_to_image_lib
+    ${catkin_EXPORTED_TARGETS}
+)
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
@@ -209,6 +215,11 @@ include_directories(
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
 
-add_executable(pointcloud_to_image src/pointcloud_to_image.cpp)
-target_link_libraries(pointcloud_to_image ${OpenCV_LIBS} ${catkin_LIBRARIES})
-add_dependencies(pointcloud_to_image lidar_camera_generate_messages_cpp)
+
+#############
+## Executables ##
+#############
+
+add_executable(combine_lidar_camera src/combine_lidar_camera.cpp)
+target_link_libraries(combine_lidar_camera pointcloud_to_image_lib ${OpenCV_LIBS} ${catkin_LIBRARIES})
+add_dependencies(combine_lidar_camera lidar_camera_generate_messages_cpp ${catkin_EXPORTED_TARGETS})

@@ -1,48 +1,8 @@
-/**
- * @file pointcloud_to_image.cpp
- *
- * @brief PointCloudToImage class that combines 3D LIDAR and usb camera data
- * @author Pavel Shumejko,   <p_sumejko@yahoo.com>
- *
- * Created on: Feb 13, 2018
- */
+#include <lidar_camera/pointcloud_to_image.hpp>
 
-#include <opencv2/core/core.hpp>
-#include <opencv2/highgui.hpp>
-#include <opencv2/imgproc.hpp>
-
-#include <pcl_conversions/pcl_conversions.h>
-#include <pcl_ros/point_cloud.h>
-#include <pcl/point_types.h>
-#include <pcl/io/pcd_io.h>
-#include <pcl_ros/transforms.h>
-
-#include <ros/ros.h>
-
-#include <sensor_msgs/PointCloud2.h>
-#include <sensor_msgs/Image.h>
-
-#include <string>
-
-#include <image_transport/image_transport.h>
-#include <cv_bridge/cv_bridge.h>
-#include <sensor_msgs/image_encodings.h>
-#include <image_geometry/pinhole_camera_model.h>
-#include <tf/transform_listener.h>
-
-
-/**
- * This node subscribes to a 3D LIDAR and an usb camera topics and:
- * 1. Publishes a filtered PointCloud2, that includes all the LIDAR points that overlap the camera image with respective RGB of the point in the enviroment 
- * 2. Depth image that is of the same size and FOV as the camera image and has metric depth data for each of the pixels
- */
-
-class PointCloudToImage
-{
-public:
-  void cloud_cb (const sensor_msgs::PointCloud2ConstPtr& cloud)
+  void PointCloudToImage::cloudCb (const sensor_msgs::PointCloud2ConstPtr& cloud)
   {
-    PointCloud cloud_xyz;
+    pcl::PointCloud<pcl::PointXYZ> cloud_xyz;
     sensor_msgs::PointCloud2 transformed_cloud;
     sensor_msgs::PointCloud2 filtered_cloud;
 
@@ -57,10 +17,15 @@ public:
 
     tf::StampedTransform transform;
 
+    float distance;
+    std::vector<uint16_t> vec;
+    cv::Mat depthMat = cv::Mat::zeros(this->frame.size(), CV_16UC1);
+    //cv::Mat depthf = cv::Mat::zeros(this->frame.size(), CV_8UC1);
+
     try
     {
-      listener.waitForTransform("cam0", "lidar0", ros::Time(0), ros::Duration(10.0));
-      listener.lookupTransform("cam0", "lidar0", ros::Time(0), transform);
+      this->listener.waitForTransform("cam0", "lidar0", ros::Time(0), ros::Duration(10.0));
+      this->listener.lookupTransform("cam0", "lidar0", ros::Time(0), transform);
     }
     catch (tf::TransformException ex) 
     {
@@ -91,24 +56,43 @@ public:
         uv_pixel = cam_model_.project3dToPixel(pt_cv);
         if(uv_pixel.x > 0 and uv_pixel.x < 1280 and uv_pixel.y > 0 and uv_pixel.y < 720) 
           {
-            cv::Vec3b colour = frame.at<cv::Vec3b>(cv::Point(uv_pixel.x, uv_pixel.y));
+            cv::Vec3b colour = this->frame.at<cv::Vec3b>(cv::Point(uv_pixel.x, uv_pixel.y));
             pcl::PointXYZRGB temp = point;
             temp.r = colour.val[2];
             temp.g = colour.val[1];
             temp.b = colour.val[0];
             filtered_cloud_xyzrgb.push_back(temp);
+
+            distance = getDistanceToPoint(pt_cv);
+     				
+     				/// not scaled
+     				depthMat.at<uint16_t>(cv::Point(uv_pixel.x, uv_pixel.y)) = static_cast<uint16_t>(distance * 1000);
+     				//vec.push_back(distance * 1000);
+
+     				/// scaled (to use comment the "not scaled" lines above)
+     				// depthMat.at<uint16_t>(cv::Point(uv_pixel.x, uv_pixel.y)) = static_cast<uint16_t>(mapValue(distance, 0, 10, 0, 65535));
+     				// vec.push_back(static_cast<uint16_t>(mapValue(distance, 0, 10, 0, 65535)));
           }
       }
     }
+    cv::Mat temp, result;
+    dilate(depthMat, result, cv::Mat(), cv::Point(-1, -1), 10, 1, 1);
+
+    //depthMat.convertTo(depthf, CV_8UC1, 255.0/getMaxMin(vec).second);
+		//dilate(depthf, temp, cv::Mat(), cv::Point(-1, -1), 10, 1, 1);
+		//temp.convertTo(result, CV_16UC1, getMaxMin(vec).second/255.0);
+
+    cv_bridge::CvImage out_msg;
+		out_msg.encoding = sensor_msgs::image_encodings::TYPE_16UC1;
+		out_msg.image = result;
+		this->output_image_pub.publish(out_msg.toImageMsg());
 
     pcl::toROSMsg (filtered_cloud_xyzrgb, filtered_cloud);
-
     filtered_cloud.header.frame_id = "cam0";
-
-    filtered_pub.publish(filtered_cloud);
+    this->filtered_pub.publish(filtered_cloud);
   }
 
-  void image_cb (const sensor_msgs::ImageConstPtr& original_image)
+  void PointCloudToImage::imageCb(const sensor_msgs::ImageConstPtr& original_image)
   {
     cv_bridge::CvImagePtr cv_ptr;
 
@@ -122,69 +106,41 @@ public:
         return;
     }
 
-    frame = cv_ptr->image;
-
-    //output_image_pub.publish(cv_ptr->toImageMsg());
+    this->frame = cv_ptr->image;
   }
 
-  void camera_info_cb(const sensor_msgs::CameraInfoConstPtr& info_msg)
+  void PointCloudToImage::cameraInfoCb(const sensor_msgs::CameraInfoConstPtr& info_msg)
   {
-    cam_model_.fromCameraInfo(info_msg);
+    this->cam_model_.fromCameraInfo(info_msg);
   }
 
-  // Constructor
-  PointCloudToImage () : cloud_topic_("/lidar0/velodyne_points"), image_topic_("/cam0/image_rect_color"), 
-  filtered_cloud_topic_("/lidar0/filtered_points"), image_projected_topic_("/output_image"), it_(nh_)
+  float PointCloudToImage::getDistanceToPoint(cv::Point3d point)
   {
-    cloud_sub_ = nh_.subscribe (cloud_topic_, 30, &PointCloudToImage::cloud_cb, this);
-    image_sub_ = it_.subscribe (image_topic_, 1, &PointCloudToImage::image_cb, this);
-    camera_info_sub_ = nh_.subscribe("/cam0/camera_info", 1, &PointCloudToImage::camera_info_cb, this);
-
-    filtered_pub = nh_.advertise<sensor_msgs::PointCloud2>(filtered_cloud_topic_, 1);
-    output_image_pub = it_.advertise(image_projected_topic_, 1);
-
-    //print some info about the node
-    std::string r_ct = nh_.resolveName (cloud_topic_);
-    std::string r_it = nh_.resolveName (image_topic_);
-    std::string r_ot = nh_.resolveName (image_projected_topic_);
-    ROS_INFO_STREAM("Listening for incoming pcl data on topic " << r_ct );
-    ROS_INFO_STREAM("Listening for incoming images on topic " << r_it );
-    ROS_INFO_STREAM("Publishing output image on topic " << r_ot );
+  	return sqrt(pow((point.x), 2) + pow((point.y), 2) + pow((point.z), 2));
   }
-private:
-  typedef pcl::PointCloud<pcl::PointXYZ> PointCloud;
-  
-  std::string cloud_topic_; //default point cloud input
-  std::string image_topic_; //default image input
-  std::string filtered_cloud_topic_; //default pointcloud output
-  std::string image_projected_topic_; //default output image
 
-  ros::NodeHandle nh_;
-  ros::Subscriber cloud_sub_; // pointcloud subscriber
-  ros::Subscriber camera_info_sub_; // cameraInfo subscriber
-  ros::Publisher filtered_pub; // filtered cloud publisher
+  float PointCloudToImage::mapValue(uint16_t s, uint16_t a1, uint16_t a2, uint16_t b1, uint16_t b2)
+	{
+    return b1 + (s - a1) * (b2 - b1) / (a2 - a1);
+	}
 
-  image_transport::ImageTransport it_;
-  image_transport::Subscriber image_sub_; //image subscriber
-  image_transport::Publisher output_image_pub; // output image publisher
-
-  image_geometry::PinholeCameraModel cam_model_;
-
-  tf::TransformListener listener;
-
-  cv::Mat frame;
-};
-
-int main (int argc, char **argv)
-{
-  ros::init (argc, argv, "pointcloud_to_image");
-  ROS_INFO("Rosnode initialized");
-
-  PointCloudToImage pci; //load up the node
-
-  while(ros::ok())
+	std::pair<uint16_t, uint16_t> PointCloudToImage::getMaxMin(std::vector<uint16_t> vec)
   {
-    ros::spinOnce();
+  	uint16_t max_val = 0;
+  	uint16_t min_val = 0;
+  	std::pair <uint16_t, uint16_t> result;
+
+  	for(uint16_t val : vec)
+  	{
+  		if(val > max_val)
+  		{
+  			max_val = val;
+  		}
+  		if(val < min_val)
+  		{
+  			min_val = val;
+  		}
+  	}
+  	result = std::make_pair(min_val, max_val);
+  	return result;
   }
-  return 0;
-}
