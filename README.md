@@ -26,4 +26,4 @@ Filtered and colored pointcloud:
 
 Depth image:
 
-[depth_2.png](https://postimg.org/image/58og4q2ul/)
+[![depth_2.png](https://s14.postimg.org/4vx1yjkkx/depth_2.png)](https://postimg.org/image/58og4q2ul/)
