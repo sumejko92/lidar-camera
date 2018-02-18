@@ -18,3 +18,12 @@ roslaunch lidar_camera combine_lidar_camera.launch
 ```
 This will start the rosbag, combine_lidar_camera node and image_view for displaying the depth image.
 
+## Results
+
+Filtered and colored pointcloud:
+
+[![rviz_2.png](https://s14.postimg.org/8sadulq5t/rviz_2.png)](https://postimg.org/image/ku5roqze5/)
+
+Depth image:
+
+[depth_2.png](https://postimg.org/image/58og4q2ul/)
