@@ -26,6 +26,7 @@
 
 #include <string>
 #include <utility>
+#include <gtest/gtest.h>
 
 #include <image_transport/image_transport.h>
 #include <cv_bridge/cv_bridge.h>
@@ -83,7 +84,10 @@ public:
    */
 	std::pair <uint16_t, uint16_t> getMaxMin(std::vector<uint16_t> vec);
 
-  // Constructor
+   /*
+    * Construct a PointCloudToImage object which subscribes to the point cloud nad image data from the sensors. 
+    * Also creates publishers for the filtered rgb cloud and depth image 
+    */
   PointCloudToImage() : cloud_topic_("/lidar0/velodyne_points"), image_topic_("/cam0/image_rect_color"), 
   filtered_cloud_topic_("/lidar0/filtered_points"), depth_image_topic_("/output_image"), it_(nh_)
   {
@@ -97,8 +101,6 @@ public:
 
     filtered_pub = nh_.advertise<sensor_msgs::PointCloud2>(filtered_cloud_topic_, 1);
     output_image_pub = it_.advertise(depth_image_topic_, 1);
-
-    cv::namedWindow("window");
 
     //print some info about the node
     std::string r_ct = nh_.resolveName (cloud_topic_);
@@ -130,4 +132,6 @@ private:
   tf::TransformListener listener;
 
   cv::Mat frame;
+
+  FRIEND_TEST(PointcloudToImageTest, valuesTest);
 };

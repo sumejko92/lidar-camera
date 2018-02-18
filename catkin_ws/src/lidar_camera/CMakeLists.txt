@@ -23,8 +23,9 @@ find_package(catkin REQUIRED COMPONENTS
 find_package(OpenCV 3.2 REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
 
+
 ## System dependencies are found with CMake's conventions
-# find_package(Boost REQUIRED COMPONENTS system)
+#find_package(Boost REQUIRED COMPONENTS system)
 
 
 ## Uncomment this if the package has a setup.py. This macro ensures
@@ -116,8 +117,8 @@ include_directories(${OpenCV_INCLUDE_DIRS})
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES pointcloud_to_image_lib
-#  CATKIN_DEPENDS pcl_conversions pcl_ros roscpp sensor_msgs std_msgs
-#  DEPENDS system_lib
+ # CATKIN_DEPENDS pcl_conversions pcl_ros roscpp sensor_msgs std_msgs
+ # DEPENDS system_lib boost
 )
 
 ###########
@@ -215,6 +216,8 @@ add_dependencies(pointcloud_to_image_lib
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
 
+catkin_add_gtest(PointcloudToImageTest test/PointcloudToImageTest.cpp)
+target_link_libraries(PointcloudToImageTest ${catkin_LIBRARIES} ${GTEST_LIBRARIES})
 
 #############
 ## Executables ##

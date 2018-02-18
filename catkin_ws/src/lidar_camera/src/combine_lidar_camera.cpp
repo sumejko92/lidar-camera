@@ -11,6 +11,5 @@ int main (int argc, char **argv)
   {
     ros::spinOnce();
   }
-  ROS_INFO("Exiting");
   return 0;
 }

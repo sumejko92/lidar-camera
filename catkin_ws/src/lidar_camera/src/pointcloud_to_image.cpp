@@ -41,7 +41,7 @@
     catch (std::runtime_error e)
     {
       ROS_ERROR_STREAM("Error when converting from cloud message: "<< e.what());
-      return;
+      throw std::runtime_error(e);
     }
 
     pcl::copyPointCloud(cloud_xyz, cloud_xyzrgb);
