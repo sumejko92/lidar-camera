@@ -91,22 +91,18 @@ public:
   PointCloudToImage() : cloud_topic_("/lidar0/velodyne_points"), image_topic_("/cam0/image_rect_color"), 
   filtered_cloud_topic_("/lidar0/filtered_points"), depth_image_topic_("/output_image"), it_(nh_)
   {
-    ros::Rate rate(2);
-    rate.sleep();
-    camera_info_sub_ = nh_.subscribe("/cam0/camera_info", 1, &PointCloudToImage::cameraInfoCb, this);
-    rate.sleep();
-    image_sub_ = it_.subscribe (image_topic_, 1, &PointCloudToImage::imageCb, this);
-    rate.sleep();
-    cloud_sub_ = nh_.subscribe (cloud_topic_, 30, &PointCloudToImage::cloudCb, this);
-
     filtered_pub = nh_.advertise<sensor_msgs::PointCloud2>(filtered_cloud_topic_, 1);
     output_image_pub = it_.advertise(depth_image_topic_, 1);
 
+    camera_info_sub_ = nh_.subscribe("/cam0/camera_info", 1, &PointCloudToImage::cameraInfoCb, this);
+    image_sub_ = it_.subscribe(image_topic_, 1, &PointCloudToImage::imageCb, this);
+    cloud_sub_ = nh_.subscribe(cloud_topic_, 30, &PointCloudToImage::cloudCb, this);
+
     //print some info about the node
-    std::string r_ct = nh_.resolveName (cloud_topic_);
-    std::string r_it = nh_.resolveName (image_topic_);
-    std::string r_ft = nh_.resolveName (filtered_cloud_topic_);
-    std::string r_ot = nh_.resolveName (depth_image_topic_);
+    std::string r_ct = nh_.resolveName(cloud_topic_);
+    std::string r_it = nh_.resolveName(image_topic_);
+    std::string r_ft = nh_.resolveName(filtered_cloud_topic_);
+    std::string r_ot = nh_.resolveName(depth_image_topic_);
     ROS_INFO_STREAM("Listening for incoming point cloud data on topic " << r_ct );
     ROS_INFO_STREAM("Listening for incoming images on topic " << r_it );
     ROS_INFO_STREAM("Publishing filtered point cloud on topic " << r_ft );
@@ -132,6 +128,4 @@ private:
   tf::TransformListener listener;
 
   cv::Mat frame;
-
-  FRIEND_TEST(PointcloudToImageTest, valuesTest);
 };
