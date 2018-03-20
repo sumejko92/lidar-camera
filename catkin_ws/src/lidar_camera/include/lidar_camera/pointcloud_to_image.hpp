@@ -68,22 +68,6 @@ public:
    */
   float getDistanceToPoint(cv::Point3d point);
 
-  /**
-   * @brief maps values from one range to another
-   * @param s value to be mapped
-   * @param a1, a2 min&max values of source range
-   * @param b1, b2 min&max values of destination range
-   * @return mapped value
-   */
-	float mapValue(uint16_t s, uint16_t a1, uint16_t a2, uint16_t b1, uint16_t b2);
-
-  /**
-   * @brief camera_info callback
-   * @param vec std::vector
-   * @return std::pair containing min and max value of the input vector
-   */
-	std::pair <uint16_t, uint16_t> getMaxMin(std::vector<uint16_t> vec);
-
    /*
     * Construct a PointCloudToImage object which subscribes to the point cloud nad image data from the sensors. 
     * Also creates publishers for the filtered rgb cloud and depth image 

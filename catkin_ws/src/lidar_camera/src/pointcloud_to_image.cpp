@@ -79,7 +79,6 @@
     cv::Mat temp, result;
     dilate(depthMat, result, cv::Mat(), cv::Point(-1, -1), 10, 1, 1);
 
-
     cv_bridge::CvImage out_msg;
 		out_msg.encoding = sensor_msgs::image_encodings::TYPE_16UC1;
 		out_msg.image = result;
@@ -115,30 +114,4 @@
   float PointCloudToImage::getDistanceToPoint(cv::Point3d point)
   {
   	return sqrt(pow((point.x), 2) + pow((point.y), 2) + pow((point.z), 2));
-  }
-
-  float PointCloudToImage::mapValue(uint16_t s, uint16_t a1, uint16_t a2, uint16_t b1, uint16_t b2)
-	{
-    return b1 + (s - a1) * (b2 - b1) / (a2 - a1);
-	}
-
-	std::pair<uint16_t, uint16_t> PointCloudToImage::getMaxMin(std::vector<uint16_t> vec)
-  {
-  	uint16_t max_val = 0;
-  	uint16_t min_val = 0;
-  	std::pair <uint16_t, uint16_t> result;
-
-  	for(uint16_t val : vec)
-  	{
-  		if(val > max_val)
-  		{
-  			max_val = val;
-  		}
-  		if(val < min_val)
-  		{
-  			min_val = val;
-  		}
-  	}
-  	result = std::make_pair(min_val, max_val);
-  	return result;
   }
