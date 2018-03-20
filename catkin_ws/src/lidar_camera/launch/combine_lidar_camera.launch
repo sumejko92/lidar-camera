@@ -4,7 +4,5 @@
 
   <node pkg="lidar_camera" type="combine_lidar_camera" name="combine_lidar_camera" output="screen">
   </node>
-  <node pkg="image_view" name="image_view" type="image_view" args="image:=/output_image" output="screen">
- 	</node>
 
 </launch>

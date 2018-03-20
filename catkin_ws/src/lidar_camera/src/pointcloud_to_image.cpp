@@ -18,16 +18,21 @@
     tf::StampedTransform transform;
 
     float distance;
-    std::vector<uint16_t> vec;
+
+    if (frame.empty())
+    {
+      ROS_WARN("Frame not received");
+      return;
+    }
+
     cv::Mat depthMat = cv::Mat::zeros(this->frame.size(), CV_16UC1);
-    //cv::Mat depthf = cv::Mat::zeros(this->frame.size(), CV_8UC1);
 
     try
     {
       this->listener.waitForTransform("cam0", "lidar0", ros::Time(0), ros::Duration(10.0));
       this->listener.lookupTransform("cam0", "lidar0", ros::Time(0), transform);
     }
-    catch (tf::TransformException ex) 
+    catch(tf::TransformException ex) 
     {
       ROS_ERROR("Transform exception %s",ex.what());
     }
@@ -38,7 +43,7 @@
     {
       pcl::fromROSMsg (transformed_cloud, cloud_xyz); //convert to pcl-xyz cloud
     }
-    catch (std::runtime_error e)
+    catch(std::runtime_error e)
     {
       ROS_ERROR_STREAM("Error when converting from cloud message: "<< e.what());
       throw std::runtime_error(e);
@@ -67,20 +72,13 @@
      				
      				/// not scaled
      				depthMat.at<uint16_t>(cv::Point(uv_pixel.x, uv_pixel.y)) = static_cast<uint16_t>(distance * 1000);
-     				//vec.push_back(distance * 1000);
 
-     				/// scaled (to use comment the "not scaled" lines above)
-     				// depthMat.at<uint16_t>(cv::Point(uv_pixel.x, uv_pixel.y)) = static_cast<uint16_t>(mapValue(distance, 0, 10, 0, 65535));
-     				// vec.push_back(static_cast<uint16_t>(mapValue(distance, 0, 10, 0, 65535)));
           }
       }
     }
     cv::Mat temp, result;
     dilate(depthMat, result, cv::Mat(), cv::Point(-1, -1), 10, 1, 1);
 
-    //depthMat.convertTo(depthf, CV_8UC1, 255.0/getMaxMin(vec).second);
-		//dilate(depthf, temp, cv::Mat(), cv::Point(-1, -1), 10, 1, 1);
-		//temp.convertTo(result, CV_16UC1, getMaxMin(vec).second/255.0);
 
     cv_bridge::CvImage out_msg;
 		out_msg.encoding = sensor_msgs::image_encodings::TYPE_16UC1;
@@ -100,7 +98,7 @@
     {
         cv_ptr = cv_bridge::toCvCopy(original_image, sensor_msgs::image_encodings::BGR8);
     }
-    catch (cv_bridge::Exception& e)
+    catch(cv_bridge::Exception& e)
     {
         ROS_ERROR("cv_bridge exception: %s", e.what());
         return;
