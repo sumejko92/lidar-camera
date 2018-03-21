@@ -68,6 +68,11 @@ public:
    */
   float getDistanceToPoint(cv::Point3d point);
 
+  /**
+   * @brief fills the blank spots of the depth image with first available color columnvise
+   * @param depth_image input not filled image
+   * @return returns a filled depth image
+   */
   cv::Mat fillDepthImage(cv::Mat depth_image);
 
    /*
