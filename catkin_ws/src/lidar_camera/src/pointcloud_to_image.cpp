@@ -69,15 +69,16 @@
             filtered_cloud_xyzrgb.push_back(temp);
 
             distance = getDistanceToPoint(pt_cv);
-     				
-     				/// not scaled
      				depthMat.at<uint16_t>(cv::Point(uv_pixel.x, uv_pixel.y)) = static_cast<uint16_t>(distance * 1000);
-
           }
       }
     }
-    cv::Mat temp, result;
-    dilate(depthMat, result, cv::Mat(), cv::Point(-1, -1), 10, 1, 1);
+    cv::Mat temp, result, kernel;
+    kernel = cv::Mat::ones(3, 3, CV_32F);
+
+    dilate(depthMat, result, kernel, cv::Point(-1, -1), 3, 1, 1);
+
+    result = fillDepthImage(result);
 
     cv_bridge::CvImage out_msg;
 		out_msg.encoding = sensor_msgs::image_encodings::TYPE_16UC1;
@@ -115,3 +116,35 @@
   {
   	return sqrt(pow((point.x), 2) + pow((point.y), 2) + pow((point.z), 2));
   }
+
+	cv::Mat PointCloudToImage::fillDepthImage(cv::Mat depth_image)
+	{
+		int fill;
+    bool colulm_toggle;
+    for(int i = 0; i < 1280; i++)
+    {
+    	fill = 0;
+    	colulm_toggle = false;
+			for(int j = 0; j < 720; j++)
+			{
+				if(fill != 0 and depth_image.at<uint16_t>(cv::Point(i, j)) == 0)
+				{
+					if(!colulm_toggle)
+					{
+						for(int k = 0; k < j; k++)
+						{
+							depth_image.at<uint16_t>(cv::Point(i, k)) = fill;
+						}
+						colulm_toggle = true;
+					}
+					depth_image.at<uint16_t>(cv::Point(i, j)) = fill;
+				}
+				
+				if(depth_image.at<uint16_t>(cv::Point(i, j)) != 0)
+				{
+					fill = depth_image.at<uint16_t>(cv::Point(i, j));
+				}
+			}
+    }
+    return depth_image;
+	}

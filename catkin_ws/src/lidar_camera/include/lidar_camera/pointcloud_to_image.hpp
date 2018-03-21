@@ -68,6 +68,8 @@ public:
    */
   float getDistanceToPoint(cv::Point3d point);
 
+  cv::Mat fillDepthImage(cv::Mat depth_image);
+
    /*
     * Construct a PointCloudToImage object which subscribes to the point cloud nad image data from the sensors. 
     * Also creates publishers for the filtered rgb cloud and depth image 
