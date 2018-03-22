@@ -46,7 +46,6 @@
     catch(std::runtime_error e)
     {
       ROS_ERROR_STREAM("Error when converting from cloud message: "<< e.what());
-      throw std::runtime_error(e);
     }
 
     pcl::copyPointCloud(cloud_xyz, cloud_xyzrgb);
@@ -121,11 +120,11 @@
 	{
 		int fill;
     bool colulm_toggle;
-    for(int i = 0; i < 1280; i++)
+    for(int i = 0; i < depth_image.cols; i++)
     {
     	fill = 0;
     	colulm_toggle = false;
-			for(int j = 0; j < 720; j++)
+			for(int j = 0; j < depth_image.rows; j++)
 			{
 				if(fill != 0 and depth_image.at<uint16_t>(cv::Point(i, j)) == 0)
 				{
