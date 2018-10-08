@@ -22,8 +22,12 @@ This will start the rosbag, combine_lidar_camera node and image_view for display
 
 Filtered and colored pointcloud:
 
-[![rviz_2.png](https://s14.postimg.org/8sadulq5t/rviz_2.png)](https://postimg.org/image/ku5roqze5/)
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Dzvezdana/lidar-camera/tree/master/catkin_ws/src/results/rviz.png" width="300" /> 
+</p>
 
 Depth image:
 
-[![depth_uplaod.png](https://s17.postimg.org/ujah05skv/depth_uplaod.png)](https://postimg.org/image/i4nozu12j/)
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Dzvezdana/lidar-camera/tree/master/catkin_ws/src/results/depth.png width="300" /> 
+</p>
