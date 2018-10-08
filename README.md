@@ -29,5 +29,5 @@ Filtered and colored pointcloud:
 Depth image:
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/sumejko92/lidar-camera/master/catkin_ws/src/results/depth.png width="300" /> 
+  <img src="https://raw.githubusercontent.com/sumejko92/lidar-camera/master/catkin_ws/src/results/depth.png" width="300" /> 
 </p>
