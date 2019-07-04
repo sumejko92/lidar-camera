@@ -1,3 +1,1 @@
-build/
-devel/
-/catkin_ws/src/lidar_camera/bag_files/
+lidar_camera/rosbags/
