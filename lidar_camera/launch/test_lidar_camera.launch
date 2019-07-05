@@ -1,8 +1,6 @@
 <launch>
 
 	<node pkg="rosbag" type="play" name="rosbag" required="true" args="-l $(find lidar_camera)/bag_files/bag1.bag"/>
-
-  <node pkg="lidar_camera" type="combine_lidar_camera" name="combine_lidar_camera" output="screen">
-  </node>
+  <node pkg="lidar_camera" type="lidar_camera_node" name="lidar_camera_node" output="screen">
 
 </launch>
