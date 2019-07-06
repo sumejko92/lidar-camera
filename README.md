@@ -1,6 +1,6 @@
 # Lidar-camera
 
-**IMPORTANT**: This is an old version. The package was refactored and implemented and tested in ROS melodic. Check the melodic-devel branch
+**IMPORTANT**: This is an old version. The package was refactored, implemented and tested with ROS melodic on Ubuntu 18.04. Checkout the melodic-devel branch.
 
 This package takes inputs from a 3D lidar and separate camera, combines the inputs in such a way as to produce two separate outputs:
 1. A PointCloud2, that includes all the LIDAR points that overlap the camera image with added R, G and B data channels that contain the color of the point in the environment.
@@ -25,11 +25,11 @@ This will start the rosbag, combine_lidar_camera node and image_view for display
 Filtered and colored pointcloud:
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/sumejko92/lidar-camera/jade-devel/results/rviz.png" width="450" /> 
+  <img src="https://raw.githubusercontent.com/sumejko92/lidar-camera/jade-devel/lidar_camera/results/rviz.png" width="450" /> 
 </p>
 
 Depth image:
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/sumejko92/lidar-camera/jade-devel/results/depth.png" width="450" /> 
+  <img src="https://raw.githubusercontent.com/sumejko92/lidar-camera/jade-devel/lidar_camera/results/depth.png" width="450" /> 
 </p>
