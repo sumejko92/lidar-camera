@@ -5,8 +5,8 @@ Ubuntu: Ubuntu 18.04
 Clone the package in your catkin workspace and build to resolve missing dependencies.
 
 ## How to run
-Before running the roslaunch command make sure that you have sensor_msgs/PointCloud2 sensor_msgs/Image topics up as well as their respective tfs.
-No filtered pointcloud and depth image messages will not be published untill there are subscribers to their topics.   
+Before running the roslaunch command make sure that you have sensor_msgs/PointCloud2 sensor_msgs/Image topics up (and remmapped in test_lidar_camera.launch) as well as their respective tfs are published.
+Filtered pointcloud and depth image messages will not be published until there are subscribers to their topics.    
 
 Run the following command to launch the nodes:
 ```
@@ -14,7 +14,7 @@ roslaunch lidar_camera test_lidar_camera.launch
 ```
 This will start the lidar_camera_node and rviz with respective config displaying the filtered colored pointclound and depth image.
 
-Dynamic reconfigure can be used to apply filtering and tinker with the depth image params.
+Dynamic reconfigure can be used to apply cloud filtering and tinker with the depth image params.
 
 ## Results
 
