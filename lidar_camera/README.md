@@ -4,20 +4,21 @@ This package takes inputs from a 3D lidar and separate camera, combines the inpu
 1. A PointCloud2, that includes all the LIDAR points that overlap the camera image with added R, G and B data channels that contain the color of the point in the environment.
 2. A standard uint16 depth image that is of the same size and FOV as the camera image and has metric depth data for each of the pixels.
 
-TODO: The package will be refactored and implemented and tested in ROS melodic
 ## Setup
-ROS distribution: Jade
-Ubuntu: Ubuntu 14.04
+ROS distribution: Melodic
+Ubuntu: Ubuntu 18.04
 
-Since there were conflicts between the opencv versions(ROS Jade has dependencies to opencv2.4) [cv_bridge](https://github.com/ros-perception/vision_opencv) and [image_pipeline](https://github.com/ros-perception/image_pipeline) source code was cloned into the workspace to be recompiled. 
+Clone the package in your catkin workspace and build to resolve missing dependencies.
 
 ## How to run
-Before running the roslaunch command make sure that you have created a "bag_files" folder in the lidar_camera package and a rosbag "bag1.bag" file is inside.  
+Before running the roslaunch command make sure that you have sensor_msgs/PointCloud2 sensor_msgs/Image topics up as well as their respective tfs.
+No filtered pointcloud and depth image messages will not be published untill there are subscribers to their topics.   
+
 Run the following command to launch the nodes:
 ```
-roslaunch lidar_camera combine_lidar_camera.launch
+roslaunch lidar_camera test_lidar_camera.launch
 ```
-This will start the rosbag, combine_lidar_camera node and image_view for displaying the depth image.
+This will start the lidar_camera_node and rviz with respective config displaying the filtered colored pointclound and depth image.
 
 ## Results
 
