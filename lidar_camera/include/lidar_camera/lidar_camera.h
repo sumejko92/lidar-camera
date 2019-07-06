@@ -60,14 +60,11 @@ private:
   using DynamicConfig = lidar_camera::LidarCamConfig;
 
   // Constants
-  static constexpr const char *cloud_in_topic_ = "cloud_in"; // cloud input
-  static constexpr const char *image_in_topic_ = "image_in"; // raw image input
-  static constexpr const char *camera_info_topic_ =
-      "camera_info"; // camera info
-  static constexpr const char *processed_cloud_topic_ =
-      "processed_points"; // processed cloud output
-  static constexpr const char *depth_out_topic_ =
-      "depth_out"; // depth image output
+  static constexpr const char *cloud_in_topic_    = "cloud_in";         // cloud input
+  static constexpr const char *image_in_topic_    = "image_in";         // raw image input
+  static constexpr const char *camera_info_topic_ = "camera_info";      // camera info
+  static constexpr const char *cloud_out_topic_   = "processed_points"; // processed cloud output
+  static constexpr const char *depth_out_topic_   = "depth_out";        // depth image output
 
   static constexpr const int queue_size_ = 1;
 
@@ -77,7 +74,7 @@ private:
   ros::Subscriber camera_info_sub_;          // cameraInfo subscriber
 
   // Publishers
-  ros::Publisher processed_cloud_pub_; // processed RGB pointcloud publisher
+  ros::Publisher processed_cloud_pub_;        // processed RGB pointcloud publisher
   image_transport::Publisher depth_image_pub; // output depth image publisher
 
   // Parameters
@@ -85,8 +82,8 @@ private:
   double range_max_ = 30.0;
 
   bool fill_depth_image_ = true;
-  int kernel_size_ = 3;
-  int dilation_itr_ = 10;
+  int kernel_size_       = 3;
+  int dilation_itr_      = 10;
 
   // Variables
   ros::NodeHandle nh_;
@@ -139,9 +136,7 @@ private:
    * @param uv -> cpcl::PointXYZ point
    * @return returns true if pointcloud point is in desired range
    */
-  inline bool inRange(const pcl::PointXYZ &pt) {
-    return pt.z >= range_min_ && pt.z <= range_max_;
-  };
+  inline bool inRange(const pcl::PointXYZ &pt) { return pt.z >= range_min_ && pt.z <= range_max_; };
 
   /**
    * @brief helper function to construcst XYZRGB point from XYZ and r, g, b
@@ -150,8 +145,8 @@ private:
    * @param r, g, b -> uint8_t color values
    * @return returns pcl::PointXYZRGB point
    */
-  pcl::PointXYZRGB createPointXYZRGB(const pcl::PointXYZ &pt, const uint8_t r,
-                                     const uint8_t g, const uint8_t b);
+  pcl::PointXYZRGB createPointXYZRGB(const pcl::PointXYZ &pt, const uint8_t r, const uint8_t g,
+                                     const uint8_t b);
 
   /**
    * @brief reconfigure callback for parameter updates
