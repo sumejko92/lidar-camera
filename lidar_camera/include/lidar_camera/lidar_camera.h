@@ -17,6 +17,9 @@
 #include <pcl_ros/transforms.h>
 #include <tf/transform_listener.h>
 
+#include <dynamic_reconfigure/server.h>
+#include <lidar_camera/LidarCamConfig.h>
+
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <sensor_msgs/image_encodings.h>
@@ -52,17 +55,17 @@ public:
    */
   std::string nodeName();
 
-  // TODO
-  // dynamic reconfigure
-
 private:
+  // Types
+  using DynamicConfig = lidar_camera::LidarCamConfig;
+
   // Constants
-  static constexpr const char *cloud_in_topic_ = "cloud_in"; // pointcloud input
+  static constexpr const char *cloud_in_topic_ = "cloud_in"; // cloud input
   static constexpr const char *image_in_topic_ = "image_in"; // raw image input
   static constexpr const char *camera_info_topic_ =
       "camera_info"; // camera info
   static constexpr const char *processed_cloud_topic_ =
-      "processed_points"; // processed pointcloud output
+      "processed_points"; // processed cloud output
   static constexpr const char *depth_out_topic_ =
       "depth_out"; // depth image output
 
@@ -80,6 +83,8 @@ private:
   // Parameters
   double range_min_ = 0.0;
   double range_max_ = 30.0;
+
+  bool fill_depth_image_ = true;
   int kernel_size_ = 3;
   int dilation_itr_ = 10;
 
@@ -89,9 +94,9 @@ private:
   image_geometry::PinholeCameraModel cam_model_;
   tf::TransformListener listener_;
   cv_bridge::CvImageConstPtr cv_ptr_;
+  dynamic_reconfigure::Server<DynamicConfig> reconfig_server_;
 
   // Functions
-
   /**
    * @brief handles pointcloud callback, processed cloud and invokes
    * handleDepthImage()
@@ -147,4 +152,12 @@ private:
    */
   pcl::PointXYZRGB createPointXYZRGB(const pcl::PointXYZ &pt, const uint8_t r,
                                      const uint8_t g, const uint8_t b);
+
+  /**
+   * @brief reconfigure callback for parameter updates
+   * @param config -> lidar_camera::LidarCamConfig
+   * @param level -> uint32_t result of ORing together all of level values
+   * of the parameters that have changed. Unnecessary for now
+   */
+  void reconfigureCb(DynamicConfig &config, uint32_t level);
 };

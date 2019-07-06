@@ -10,6 +10,10 @@ void LidarCamera::init() {
       processed_cloud_topic_, queue_size_);
   depth_image_pub = it_.advertise(depth_out_topic_, queue_size_);
 
+  dynamic_reconfigure::Server<DynamicConfig>::CallbackType cb =
+      boost::bind(&LidarCamera::reconfigureCb, this, _1, _2);
+  reconfig_server_.setCallback(cb);
+
   // Debug info
   ROS_INFO_STREAM("Listening for incoming pointcloud data on topic "
                   << nh_.resolveName(cloud_in_topic_));
@@ -19,11 +23,6 @@ void LidarCamera::init() {
                   << nh_.resolveName(processed_cloud_topic_));
   ROS_INFO_STREAM("Publishing output image on topic "
                   << nh_.resolveName(depth_out_topic_));
-
-  ros::param::get("~range_min", range_min_);
-  ros::param::get("~range_max", range_max_);
-  ros::param::get("~kernel_size", kernel_size_);
-  ros::param::get("~dilation_itr", dilation_itr_);
 
   // wait for camera info
   while (ros::ok()) // TODO: loop needs better handling
@@ -40,6 +39,14 @@ void LidarCamera::init() {
 }
 
 std::string LidarCamera::nodeName() { return ros::this_node::getName(); }
+
+void LidarCamera::reconfigureCb(DynamicConfig &config, uint32_t level) {
+  range_min_ = config.range_min;
+  range_max_ = config.range_max;
+  fill_depth_image_ = config.fill_depth_image;
+  kernel_size_ = config.kernel_size;
+  dilation_itr_ = config.dilation_itr;
+}
 
 void LidarCamera::cloudCb(const sensor_msgs::PointCloud2ConstPtr &cloud_msg) {
   // check if there are any subscribers already for this topics
@@ -142,9 +149,8 @@ void LidarCamera::handleDepthImage(cv::Mat &depth_img) {
          cv::Mat::ones(kernel_size_, kernel_size_, CV_32F), cv::Point(-1, -1),
          dilation_itr_, 1, 1);
 
-  fillDepthImage(depth_img);
-
-  cv::rotate(depth_img, depth_img, cv::ROTATE_90_CLOCKWISE);
+  if (fill_depth_image_)
+    fillDepthImage(depth_img);
 
   cv_bridge::CvImage out_msg;
   out_msg.encoding = sensor_msgs::image_encodings::TYPE_16UC1;
