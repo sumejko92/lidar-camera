@@ -14,16 +14,18 @@ roslaunch lidar_camera test_lidar_camera.launch
 ```
 This will start the lidar_camera_node and rviz with respective config displaying the filtered colored pointclound and depth image.
 
+Dynamic reconfigure can be used to apply filtering and tinker with the depth image params.
+
 ## Results
 
 Filtered and colored pointcloud:
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/sumejko92/lidar-camera/master/catkin_ws/src/results/rviz.png" width="450" /> 
+  <img src="https://raw.githubusercontent.com/sumejko92/lidar-camera/melodic-devel/lidar_camera/results/rviz.png" width="450" /> 
 </p>
 
 Depth image:
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/sumejko92/lidar-camera/master/catkin_ws/src/results/depth.png" width="450" /> 
+  <img src="https://raw.githubusercontent.com/sumejko92/lidar-camera/melodic-devel/lidar_camera/results/depth.png" width="450" /> 
 </p>
