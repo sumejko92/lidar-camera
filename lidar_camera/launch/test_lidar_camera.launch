@@ -3,11 +3,6 @@
     <remap from="cloud_in" to="/lidar0/velodyne_points"/>
     <remap from="image_in" to="/camera/rgb/image_raw"/>
     <remap from="camera_info" to="/camera/rgb/camera_info"/>
-
-    <param name="range_min" value="0.0" />
-    <param name="range_max" value="30.0" />
-    <param name="kernel_size" value="3" />
-    <param name="dilation_itr" value="10" />
   </node>
 
   <node pkg="rviz" type="rviz" name="lidar_camera_viz" args="-d $(find lidar_camera)/launch/lidar_camera.rviz" required="false"/>
