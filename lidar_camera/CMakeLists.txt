@@ -9,16 +9,17 @@ add_compile_options(-std=c++11)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   roscpp
-  std_msgs
   sensor_msgs
   pcl_ros
   image_geometry
+  image_transport
+  cv_bridge
 )
 
 catkin_package(
   INCLUDE_DIRS include
  # LIBRARIES 
-  CATKIN_DEPENDS roscpp std_msgs sensor_msgs pcl_ros image_geometry
+  CATKIN_DEPENDS roscpp sensor_msgs pcl_ros image_geometry image_transport cv_bridge
  # DEPENDS system_lib
 )
 
@@ -28,14 +29,12 @@ include_directories(
 )
 
 add_executable(${PROJECT_NAME}_node
-  include/${PROJECT_NAME}/${PROJECT_NAME}_node.h
+  include/${PROJECT_NAME}/${PROJECT_NAME}.h
   src/${PROJECT_NAME}_node.cpp
+  src/${PROJECT_NAME}.cpp
 )
-add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(${PROJECT_NAME}_node ${catkin_EXPORTED_TARGETS})
+
 target_link_libraries(${PROJECT_NAME}_node
   ${catkin_LIBRARIES}
 )
-
-add_executable(combine_lidar_camera src/combine_lidar_camera.cpp)
-target_link_libraries(combine_lidar_camera pointcloud_to_image_lib ${OpenCV_LIBS} ${catkin_LIBRARIES})
-add_dependencies(combine_lidar_camera lidar_camera_generate_messages_cpp ${catkin_EXPORTED_TARGETS})

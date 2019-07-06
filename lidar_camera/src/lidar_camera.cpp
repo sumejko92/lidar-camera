@@ -1,119 +1,162 @@
-#include <lidar_camera/pointcloud_to_image.hpp>
+#include <lidar_camera/lidar_camera.h>
 
-void LidarCamera::cloudCb(const sensor_msgs::PointCloud2ConstPtr &cloud)
+void LidarCamera::init()
 {
-  pcl::PointCloud<pcl::PointXYZ> cloud_xyz;
-  sensor_msgs::PointCloud2 transformed_cloud;
-  sensor_msgs::PointCloud2 filtered_cloud;
+  cloud_in_sub_ = nh_.subscribe(cloud_in_topic_, queue_size_, &LidarCamera::cloudCb, this);
+  image_in_sub_ = it_.subscribe(image_in_topic_, queue_size_, &LidarCamera::imageCb, this);
+  camera_info_sub_ = nh_.subscribe(camera_info_topic_, queue_size_, &LidarCamera::cameraInfoCb, this);
 
-  pcl::PointCloud<pcl::PointXYZRGB> cloud_xyzrgb;
-  pcl::PointCloud<pcl::PointXYZRGB> filtered_cloud_xyzrgb;
+  processed_cloud_pub_ = nh_.advertise<sensor_msgs::PointCloud2>(processed_cloud_topic_, queue_size_);
+  depth_image_pub = it_.advertise(depth_out_topic_, queue_size_);
 
-  if ((cloud->width * cloud->height) == 0)
+  // Debug info
+  ROS_INFO_STREAM("Listening for incoming pointcloud data on topic " << nh_.resolveName(cloud_in_topic_));
+  ROS_INFO_STREAM("Listening for incoming images on topic " << nh_.resolveName(image_in_topic_));
+  ROS_INFO_STREAM("Publishing filtered point cloud on topic " << nh_.resolveName(processed_cloud_topic_));
+  ROS_INFO_STREAM("Publishing output image on topic " << nh_.resolveName(depth_out_topic_));
+
+  nh_.param("camera_frame", camera_frame_, "camera");
+  nh_.param("lidar_frame", lidar_frame_, "lidar");
+  nh_.param("range_min", range_min_, 0.0);
+  nh_.param("range_max", range_max_, 10.0);
+
+  // wait for camera info
+  while (ros::ok()) // TODO: loop needs better handling
   {
-    ROS_WARN("CLOUD NOT DENSE");
+    auto info_msg = ros::topic::waitForMessage<sensor_msgs::CameraInfo>(camera_info_topic_, ros::Duration(5));
+
+    if (info_msg)
+    {
+      cam_model_.fromCameraInfo(info_msg);
+      break;
+    }
+    ROS_WARN("No camera info received");
+  }
+}
+
+void LidarCamera::cloudCb(const sensor_msgs::PointCloud2ConstPtr &cloud_msg)
+{
+  // check if there are any subscribers already for this topics
+  bool process_cloud = processed_cloud_pub_.getNumSubscribers() > 0;
+  bool process_depth = depth_image_pub.getNumSubscribers() > 0;
+
+  // Avoid poitcloud processing if none is subscribed
+  if (!process_cloud)
+    return;
+
+  // return if the poitcloud is empty
+  if (cloud_msg.data.empty())
+  {
+    ROS_WARN("Received empty pointcloud");
     return;
   }
+
+  // return if there is no rgb image
+  if (!cv_ptr_)
+  {
+    ROS_WARN("No image received");
+    return;
+  }
+
+  // if ((cloud_msg.width * cloud_msg.height) == 0)
+  // {
+  //   ROS_WARN("Cloud not dense");
+  //   return;
+  // }
 
   tf::StampedTransform transform;
-
-  float distance;
-
-  if (frame.empty())
-  {
-    ROS_WARN("Frame not received");
-    return;
-  }
-
-  cv::Mat depthMat = cv::Mat::zeros(this->frame.size(), CV_16UC1);
-
+  // check if the tranform exists
   try
   {
-    this->listener.waitForTransform("cam0", "lidar0", ros::Time(0), ros::Duration(10.0));
-    this->listener.lookupTransform("cam0", "lidar0", ros::Time(0), transform);
+    listener_.waitForTransform(cam_model_.tfFrame(), lidar_frame_, ros::Time(0), ros::Duration(10.0));
+    listener_.lookupTransform(cam_model_.tfFrame(), lidar_frame_, ros::Time(0), transform);
   }
   catch (tf::TransformException ex)
   {
     ROS_ERROR("Transform exception %s", ex.what());
+    return;
   }
 
-  pcl_ros::transformPointCloud("cam0", transform, *cloud, transformed_cloud);
+  sensor_msgs::PointCloud2 transformed_cloud_msg;
+  pcl_ros::transformPointCloud(cam_model_.tfFrame(), transform, *cloud_msg, transformed_cloud_msg);
+
+  pcl::PointCloud<pcl::PointXYZ> cloud_XYZ;
+  // pcl::PointCloud<pcl::PointXYZRGB> cloud_XYZRGB;
 
   try
   {
-    pcl::fromROSMsg(transformed_cloud, cloud_xyz); //convert to pcl-xyz cloud
+    pcl::fromROSMsg(transformed_cloud_msg, cloud_XYZ); //convert to pcl-xyz cloud
   }
   catch (std::runtime_error e)
   {
     ROS_ERROR_STREAM("Error when converting from cloud message: " << e.what());
+    return;
   }
 
-  pcl::copyPointCloud(cloud_xyz, cloud_xyzrgb);
+  // pcl::copyPointCloud(cloud_XYZ, cloud_XYZRGB); // the copy serves as constructor for pcl-xyzrgb cloud
 
-  cv::Point2d uv_pixel;
+  pcl::PointCloud<pcl::PointXYZRGB> processed_cloud_XYZRGB;
+  auto depthMat = cv::Mat::zeros(cv_ptr_->image.size(), CV_16UC1);
 
-  for (const pcl::PointXYZRGB &point : cloud_xyzrgb.points)
+  for (const auto &point : cloud_XYZ.points)
   {
-    if (point.z > 0.0)
+    // apply range filtering
+    if (point.z >= range_min_ && point.z <= range_max_)
     {
-      cv::Point3d pt_cv(point.x, point.y, point.z);
-      uv_pixel = cam_model_.project3dToPixel(pt_cv);
-      if (uv_pixel.x > 0 and uv_pixel.x < 1280 and uv_pixel.y > 0 and uv_pixel.y < 720)
+      auto uv_pixel = cam_model_.project3dToPixel({point.x, point.y, point.z});
+      if (inFOV(uv_pixel, cv_ptr_->image))
       {
-        cv::Vec3b colour = this->frame.at<cv::Vec3b>(cv::Point(uv_pixel.x, uv_pixel.y));
-        pcl::PointXYZRGB temp = point;
-        temp.r = colour.val[2];
-        temp.g = colour.val[1];
-        temp.b = colour.val[0];
-        filtered_cloud_xyzrgb.push_back(temp);
+        auto rgb_colour = cv_ptr_->image.at<cv::Vec3b>(uv_pixel.x, uv_pixel.y);
+        processed_cloud_XYZRGB.push_back(pcl::PointXYZRGB(point, rgb_colour[0], rgb_colour[1], rgb_colour[2]));
 
-        distance = getDistanceToPoint(pt_cv);
-        depthMat.at<uint16_t>(cv::Point(uv_pixel.x, uv_pixel.y)) = static_cast<uint16_t>(distance * 1000);
+        depthMat.at<uint16_t>(uv_pixel.x, uv_pixel.y) = static_cast<uint16_t>(point.z * std::milli::den);
       }
     }
   }
-  cv::Mat temp, result, kernel;
-  kernel = cv::Mat::ones(3, 3, CV_32F);
 
-  dilate(depthMat, result, kernel, cv::Point(-1, -1), 3, 1, 1);
+  // convert the pcl pointcloud to a ROS sensor_msgs::PointCloud2 msg and publish it
+  sensor_msgs::PointCloud2 processed_cloud_msg;
+  pcl::toROSMsg(processed_cloud_XYZRGB, processed_cloud_msg);
+  processed_cloud_msg.header.frame_id = cam_model_.tfFrame();
+  processed_cloud_pub_.publish(processed_cloud_msg);
 
-  result = fillDepthImage(result);
+  // do not do any processing if there are no depth image subscribers to the given topics
+  if (!process_depth)
+    return;
 
-  cv_bridge::CvImage out_msg;
-  out_msg.encoding = sensor_msgs::image_encodings::TYPE_16UC1;
-  out_msg.image = result;
-  this->output_image_pub.publish(out_msg.toImageMsg());
-
-  pcl::toROSMsg(filtered_cloud_xyzrgb, filtered_cloud);
-  filtered_cloud.header.frame_id = "cam0";
-  this->filtered_pub.publish(filtered_cloud);
+  void handleDepthImage(depthMat);
 }
 
-void LidarCamera::imageCb(const sensor_msgs::ImageConstPtr &original_image)
+void LidarCamera::imageCb(const sensor_msgs::ImageConstPtr &image_msg)
 {
-  cv_bridge::CvImagePtr cv_ptr;
-
   try
   {
-    cv_ptr = cv_bridge::toCvCopy(original_image, sensor_msgs::image_encodings::BGR8);
+    cv_ptr_ = cv_bridge::toCvShare(image_msg);
   }
   catch (cv_bridge::Exception &e)
   {
     ROS_ERROR("cv_bridge exception: %s", e.what());
     return;
   }
-
-  this->frame = cv_ptr->image;
 }
 
-void LidarCamera::cameraInfoCb(const sensor_msgs::CameraInfoConstPtr &info_msg)
+void LidarCamera::handleDepthImage(cv::Mat &img_in)
 {
-  this->cam_model_.fromCameraInfo(info_msg);
-}
+  auto depth_img = img_in;
 
-float LidarCamera::getDistanceToPoint(cv::Point3d point)
-{
-  return sqrt(pow((point.x), 2) + pow((point.y), 2) + pow((point.z), 2));
+  // cv::Mat temp, result, kernel;
+  // kernel = cv::Mat::ones(3, 3, CV_32F);
+  // dilate(depthMat, result, kernel, cv::Point(-1, -1), 3, 1, 1);
+
+  dilate(depth_img, depth_img, cv::Mat(), cv::Point(-1, -1), 10, 1, 1);
+
+  // result = fillDepthImage(result);
+  depth_img = fillDepthImage(depth_img);
+
+  cv_bridge::CvImage out_msg;
+  out_msg.encoding = sensor_msgs::image_encodings::TYPE_16UC1;
+  out_msg.image = depth_img;
+  depth_image_pub.publish(out_msg.toImageMsg());
 }
 
 cv::Mat LidarCamera::fillDepthImage(cv::Mat depth_image)

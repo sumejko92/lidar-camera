@@ -7,29 +7,27 @@
  * Created on: July 4, 2019
  */
 
-#include <pcl_conversions/pcl_conversions.h>
-#include <pcl_ros/point_cloud.h>
-#include <pcl/point_types.h>
-#include <pcl/io/pcd_io.h>
-#include <pcl_ros/transforms.h>
+#pragma once
 
 #include <ros/ros.h>
+
+#include <pcl_ros/point_cloud.h>
+#include <pcl/point_types.h>
+#include <tf/transform_listener.h>
 
 #include <sensor_msgs/PointCloud2.h>
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/image_encodings.h>
 
-#include <string>
-#include <utility>
-#include <gtest/gtest.h>
-
 #include <image_transport/image_transport.h>
-#include <cv_bridge/cv_bridge.h>
 #include <image_geometry/pinhole_camera_model.h>
-#include <tf/transform_listener.h>
+#include <cv_bridge/cv_bridge.h>
+
+#include <string>
+#include <ratio>
 
 /**
- * Class that contains subscribers for 3D LIDAR and usb camera topics and:
+ * Class that contains subscribers for LIDAR [sensor_msgs/PointCloud2] and usb camera topic [sensor_msgs/Image] and:
  * 1. Publishes a filtered PointCloud2, that includes all the LIDAR points that overlap the camera image with respective RGB of the point in the enviroment 
  * 2. Depth image that is of the same size and FOV as the camera image and has metric depth data(in mm) for each of the pixels
  */
@@ -37,81 +35,83 @@
 class LidarCamera
 {
 public:
-  /**
-   * @brief velodyne_points callback
-   * @param cloud sensor_msgs::PointCloud2 cloud published on /lidar0/velodyne_points topics
-   */
-  void cloudCb(const sensor_msgs::PointCloud2ConstPtr &cloud);
+  // Constructor
+  LidarCamera() : it_(nh_){};
 
   /**
-   * @brief image_rect_color callback
-   * @param original_image sensor_msgs::Image published on /cam0/image_rect_color
+   * @brief default initialization
    */
-  void imageCb(const sensor_msgs::ImageConstPtr &original_image);
+  void init();
+
+  // TODO
+  // dynamic reconfigure
+
+private:
+  // Constants
+  static constexpr const char *cloud_in_topic_ = "cloud_in";                // pointcloud input
+  static constexpr const char *image_in_topic_ = "image_in";                // raw image input
+  static constexpr const char *camera_info_topic_ = "camera_info";          // camera info
+  static constexpr const char *processed_cloud_topic_ = "processed_points"; // processed pointcloud output
+  static constexpr const char *depth_out_topic_ = "depth_out";              // depth image output
+
+  static constexpr const int queue_size_ = 1;
+
+  // Subscribers
+  ros::Subscriber cloud_in_sub_;             // pointcloud subscriber
+  image_transport::Subscriber image_in_sub_; // image subscriber
+  ros::Subscriber camera_info_sub_;          // cameraInfo subscriber
+
+  // Publishers
+  ros::Publisher processed_cloud_pub_;        // processed RGB pointcloud publisher
+  image_transport::Publisher depth_image_pub; // output depth image publisher
+
+  // Parameters
+  std::string lidar_frame_;
+  double range_min_;
+  double range_max_;
+
+  // Variables
+  ros::NodeHandle nh_;
+  image_transport::ImageTransport it_;
+  image_geometry::PinholeCameraModel cam_model_;
+  tf::TransformListener listener_;
+  cv_bridge::CvImageConstPtr cv_ptr_;
+
+  // Functions
 
   /**
-   * @brief camera_info callback
-   * @param info_msg sensor_msgs::CameraInfo published on /cam0/camera_info
+   * @brief handles pointcloud callback, processed cloud and invokes handleDepthImage()
+   * @param cloud_msg -> sensor_msgs::PointCloud2 msg
    */
-  void cameraInfoCb(const sensor_msgs::CameraInfoConstPtr &info_msg);
+  void cloudCb(const sensor_msgs::PointCloud2ConstPtr &cloud_msg);
 
   /**
-   * @brief calculates the distance to a 3D point
-   * @param point cv::Point3d in 3D space(x, y, z)
-   * @return returns the distance from the origin to the point
+   * @brief image callback
+   * @param image_msg -> sensor_msgs::Image msg
    */
-  float getDistanceToPoint(cv::Point3d point);
+  void imageCb(const sensor_msgs::ImageConstPtr &image_msg);
 
   /**
    * @brief fills the blank spots of the depth image with first available color columnvise
-   * @param depth_image input not filled image
-   * @return returns a filled depth image
+   * @param depth_image -> cv::Mat input not filled image
+   * @return returns a filled depth image in a cv::Mat format
    */
-  cv::Mat fillDepthImage(cv::Mat depth_image);
+  cv::Mat fillDepthImage(const cv::Mat &depth_image);
 
-  /*
-    * Construct a LidarCamera object which subscribes to the point cloud nad image data from the sensors. 
-    * Also creates publishers for the filtered rgb cloud and depth image 
-    */
-  LidarCamera() : cloud_topic_("/lidar0/velodyne_points"), image_topic_("/cam0/image_rect_color"),
-                  filtered_cloud_topic_("/lidar0/filtered_points"), depth_image_topic_("/output_image"), it_(nh_)
+  /**
+   * @brief creates and publishes a depth image based on pointcloud data 
+   * @param img_in -> cv::Mat input not filled image
+   */
+  void handleDepthImage(cv::Mat &img_in);
+
+  /**
+   * @brief checks if pixel is in FOV of an given image
+   * @param uv -> cv::Point2i pixel
+   * @param img -> cv::Mat image
+   * @return returns true if pixel is in FOV of image
+   */
+  inline bool inFOV(const cv::Point2i &uv, const cv::Mat &img)
   {
-    filtered_pub = nh_.advertise<sensor_msgs::PointCloud2>(filtered_cloud_topic_, 1);
-    output_image_pub = it_.advertise(depth_image_topic_, 1);
-
-    camera_info_sub_ = nh_.subscribe("/cam0/camera_info", 1, &LidarCamera::cameraInfoCb, this);
-    image_sub_ = it_.subscribe(image_topic_, 1, &LidarCamera::imageCb, this);
-    cloud_sub_ = nh_.subscribe(cloud_topic_, 30, &LidarCamera::cloudCb, this);
-
-    //print some info about the node
-    std::string r_ct = nh_.resolveName(cloud_topic_);
-    std::string r_it = nh_.resolveName(image_topic_);
-    std::string r_ft = nh_.resolveName(filtered_cloud_topic_);
-    std::string r_ot = nh_.resolveName(depth_image_topic_);
-    ROS_INFO_STREAM("Listening for incoming point cloud data on topic " << r_ct);
-    ROS_INFO_STREAM("Listening for incoming images on topic " << r_it);
-    ROS_INFO_STREAM("Publishing filtered point cloud on topic " << r_ft);
-    ROS_INFO_STREAM("Publishing output image on topic " << r_ot);
-  }
-
-private:
-  std::string cloud_topic_;          //default point cloud input
-  std::string image_topic_;          //default image input
-  std::string filtered_cloud_topic_; //default pointcloud output
-  std::string depth_image_topic_;    //default output image
-
-  ros::NodeHandle nh_;
-  ros::Subscriber cloud_sub_;       // pointcloud subscriber
-  ros::Subscriber camera_info_sub_; // cameraInfo subscriber
-  ros::Publisher filtered_pub;      // filtered cloud publisher
-
-  image_transport::ImageTransport it_;
-  image_transport::Subscriber image_sub_;      //image subscriber
-  image_transport::Publisher output_image_pub; // output image publisher
-
-  image_geometry::PinholeCameraModel cam_model_;
-
-  tf::TransformListener listener;
-
-  cv::Mat frame;
+    return uv.x > 0 and uv.x < img.cols and uv.y > 0 and uv.y < img.rows;
+  };
 };

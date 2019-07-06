@@ -1,6 +1,11 @@
 <launch>
+  <node pkg="lidar_camera" name="lidar_camera" type="lidar_camera_node" output="screen" required="true">
+    <remap from="cloud_in" to="/lidar0/velodyne_points"/>
+    <remap from="image_in" to="/camera/rgb/image_raw"/>
+    <remap from="camera_info" to="/camera/rgb/camera_info"/>
 
-	<node pkg="rosbag" type="play" name="rosbag" required="true" args="-l $(find lidar_camera)/bag_files/bag1.bag"/>
-  <node pkg="lidar_camera" type="lidar_camera_node" name="lidar_camera_node" output="screen">
-
+    <param name="lidar_frame" value="lidar0" />
+    <param name="range_min" value="0.0" />
+    <param name="range_max" value="10" />
+  </node>
 </launch>
